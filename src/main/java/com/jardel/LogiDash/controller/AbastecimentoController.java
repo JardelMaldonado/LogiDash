@@ -1,18 +1,35 @@
 package com.jardel.LogiDash.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import com.jardel.LogiDash.dto.AbastecimentoRequest;
+import com.jardel.LogiDash.dto.AbastecimentoResponse;
+import com.jardel.LogiDash.dto.ProFrotasResult;
+import com.jardel.LogiDash.service.ProFrotasService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/v1/abastecimento")
+@RequestMapping("/api/v1/abastecimentos")
+@CrossOrigin(origins = "http://localhost:3000")
 public class AbastecimentoController {
-    @GetMapping
-    @ResponseStatus(HttpStatus.OK)
-    public String abastecimento() {
-        return "Abastecimento";
+
+    private final ProFrotasService proFrotasService;
+
+    public AbastecimentoController(ProFrotasService proFrotasService) {
+        this.proFrotasService = proFrotasService;
+    }
+
+    @PostMapping("/consultar")
+    public ResponseEntity<List<AbastecimentoResponse>> consultar(@RequestBody AbastecimentoRequest request) {
+        System.out.println("Recebido: dataInicial=" + request.dataInicial() + " dataFinal=" + request.dataFinal());
+
+        List<AbastecimentoResponse> resultado = proFrotasService.buscarAbastecimentos(
+                request.dataInicial(),
+                request.dataFinal()
+        );
+        System.out.println("Retornando: " + resultado.size() + " registros");
+        return ResponseEntity.ok(resultado);
     }
 }
 
