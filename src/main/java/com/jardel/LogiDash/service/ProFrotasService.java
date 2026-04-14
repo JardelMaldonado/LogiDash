@@ -3,8 +3,14 @@ package com.jardel.LogiDash.service;
 import com.jardel.LogiDash.dto.AbastecimentoRequest;
 import com.jardel.LogiDash.dto.AbastecimentoResponse;
 import com.jardel.LogiDash.dto.ProFrotasResult;
+import com.jardel.LogiDash.exception.ApiIndisponivelException;
+import com.jardel.LogiDash.exception.RateLimitException;
+import com.jardel.LogiDash.exception.SleepInterrompidoException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +19,12 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProFrotasService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProFrotasService.class);
+    private static final int TAMANHO_PAGINA = 100;
+    private static final int MAX_PAGINAS = 100;
+    private static final long DELAY_ENTRE_PAGINAS_MS = 1000;
+    private static final long DELAY_RATE_LIMIT_MS = 5000;
 
     private final WebClient webClient;
 
@@ -29,12 +41,12 @@ public class ProFrotasService {
         String inicioFormatado = dataInicio.contains("T") ? dataInicio : dataInicio + "T00:00:00";
         String fimFormatado = dataFim.contains("T") ? dataFim : dataFim + "T23:59:59";
 
-        while (temMaisDados && paginaAtual <= 100) {
-            System.out.println("Buscando Página " + paginaAtual + "...");
+        while (temMaisDados && paginaAtual <= MAX_PAGINAS) {
+            log.info("Buscando página {}...", paginaAtual);
 
             AbastecimentoRequest filtro = new AbastecimentoRequest(
                     paginaAtual,
-                    100,
+                    TAMANHO_PAGINA,
                     inicioFormatado,
                     fimFormatado,
                     null,
@@ -52,13 +64,19 @@ public class ProFrotasService {
                 if (result != null && result.registros() != null && !result.registros().isEmpty()) {
                     todosRegistros.addAll(result.registros());
                     paginaAtual++;
-                    Thread.sleep(500);
+                    aguardar(DELAY_ENTRE_PAGINAS_MS); // ← substitui o Thread.sleep solto
                 } else {
                     temMaisDados = false;
                 }
-            } catch (Exception e) {
-                System.err.println("Erro na chamada: " + e.getMessage());
-                temMaisDados = false;
+
+            } catch (WebClientResponseException e) {
+                if (e.getStatusCode().value() == 429) {
+                    log.warn("Rate limit atingido na página {}, aguardando...", paginaAtual);
+                    aguardar(DELAY_RATE_LIMIT_MS);
+                    paginaAtual--;
+                } else {
+                    throw new ApiIndisponivelException("API ProFrotas indisponível: " + e.getMessage());
+                }
             }
         }
         Set<Long> idsEstornados = todosRegistros.stream()
@@ -76,5 +94,13 @@ public class ProFrotasService {
                 .sorted((a, b) -> b.getData().compareTo(a.getData()))
                 .toList();
 
+    }
+    private void aguardar(long milissegundos) {
+        try {
+            Thread.sleep(milissegundos);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SleepInterrompidoException("Espera interrompida durante a busca de abastecimentos", e);
+        }
     }
 }
