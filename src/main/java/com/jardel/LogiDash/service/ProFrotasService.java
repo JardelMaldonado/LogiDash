@@ -64,7 +64,7 @@ public class ProFrotasService {
                 if (result != null && result.registros() != null && !result.registros().isEmpty()) {
                     todosRegistros.addAll(result.registros());
                     paginaAtual++;
-                    aguardar(DELAY_ENTRE_PAGINAS_MS); // ← substitui o Thread.sleep solto
+                    aguardar(DELAY_ENTRE_PAGINAS_MS);
                 } else {
                     temMaisDados = false;
                 }
@@ -73,7 +73,6 @@ public class ProFrotasService {
                 if (e.getStatusCode().value() == 429) {
                     log.warn("Rate limit atingido na página {}, aguardando...", paginaAtual);
                     aguardar(DELAY_RATE_LIMIT_MS);
-                    paginaAtual--;
                 } else {
                     throw new ApiIndisponivelException("API ProFrotas indisponível: " + e.getMessage());
                 }
