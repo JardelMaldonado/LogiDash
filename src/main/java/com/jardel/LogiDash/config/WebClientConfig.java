@@ -8,13 +8,16 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class WebClientConfig {
 
+    @Value("${profrotas.api.url}")
+    private String apiUrl;
+
     @Value("${profrotas.api.token}")
     private String apiToken;
 
     @Bean
     public WebClient webClient() {
         return WebClient.builder()
-                .baseUrl("https://api-portal.profrotas.com.br")
+                .baseUrl(apiUrl)
                 .defaultHeader("Content-Type", "application/json")
                 .defaultHeader("Authorization", "Bearer " + apiToken)
                 .build();
