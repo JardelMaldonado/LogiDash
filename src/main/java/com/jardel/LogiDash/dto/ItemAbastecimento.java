@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
 
-public record ItemAbastecimentoDTO(
+public record ItemAbastecimento(
         String nome,
         BigDecimal quantidade,
         @JsonProperty("valorUnitario")
