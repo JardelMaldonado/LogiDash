@@ -1,6 +1,4 @@
-package com.jardel.LogiDash.dto;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
+package com.jardel.LogiDash.dto.abastecimento;
 
 public record AbastecimentoRequest(
         Integer pagina,

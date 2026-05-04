@@ -1,10 +1,6 @@
-package com.jardel.LogiDash.dto;
+package com.jardel.LogiDash.dto.abastecimento;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.jardel.LogiDash.dto.ItemAbastecimentoDTO;
-import com.jardel.LogiDash.dto.MotoristaDTO;
-import com.jardel.LogiDash.dto.PontoVendaDTO;
-import com.jardel.LogiDash.dto.VeiculoDTO;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,12 +19,12 @@ public class AbastecimentoResponse{
     private String data;
     private String motivoRecusa;
     private Integer abastecimentoEstornado;
-    private VeiculoDTO veiculo;
-    private MotoristaDTO motorista;
-    private PontoVendaDTO pontoVenda;
+    private Veiculo veiculo;
+    private Motorista motorista;
+    private PontoVenda pontoVenda;
 
     @JsonProperty("items")
-    private List<ItemAbastecimentoDTO> itensLista;
+    private List<ItemAbastecimento> itensLista;
 
     @JsonProperty("valorTotalCalculado")
     public BigDecimal getValorTotalCalculado() {
