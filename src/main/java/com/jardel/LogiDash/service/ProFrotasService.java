@@ -1,10 +1,9 @@
 package com.jardel.LogiDash.service;
 
-import com.jardel.LogiDash.dto.AbastecimentoRequest;
-import com.jardel.LogiDash.dto.AbastecimentoResponse;
-import com.jardel.LogiDash.dto.ProFrotasResult;
+import com.jardel.LogiDash.dto.abastecimento.AbastecimentoRequest;
+import com.jardel.LogiDash.dto.abastecimento.AbastecimentoResponse;
+import com.jardel.LogiDash.dto.abastecimento.ProFrotasResult;
 import com.jardel.LogiDash.exception.ApiIndisponivelException;
-import com.jardel.LogiDash.exception.RateLimitException;
 import com.jardel.LogiDash.exception.SleepInterrompidoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,13 +85,11 @@ public class ProFrotasService {
 
         return todosRegistros.stream()
                 .filter(x -> x.getMotivoRecusa() == null || x.getMotivoRecusa().isBlank())
-                .filter(x -> x.getValorTotalCalculado() != null && x.getValorTotalCalculado().doubleValue() > 0)
+                .filter(x -> x.getValorTotalCalculado() == null || x.getValorTotalCalculado().doubleValue() >= 0)
                 .filter(x -> x.getItensLista() != null && !x.getItensLista().isEmpty())
-                .filter(x -> x.getData() != null && x.getData().compareTo(dataInicio) >= 0)
+                .filter(x -> x.getData() != null && x.getData().substring(0, 10).compareTo(dataInicio) >= 0)
                 .filter(x -> !idsEstornados.contains(x.getIdentificador()))
-                .sorted((a, b) -> b.getData().compareTo(a.getData()))
                 .toList();
-
     }
     private void aguardar(long milissegundos) {
         try {

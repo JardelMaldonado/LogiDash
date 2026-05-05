@@ -1,7 +1,7 @@
 package com.jardel.LogiDash.service;
 
-import com.jardel.LogiDash.dto.LoginRequest;
-import com.jardel.LogiDash.dto.LoginResponse;
+import com.jardel.LogiDash.dto.auth.LoginRequest;
+import com.jardel.LogiDash.dto.auth.LoginResponse;
 import com.jardel.LogiDash.database.repository.IUsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
