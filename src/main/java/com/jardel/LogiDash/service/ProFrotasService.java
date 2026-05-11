@@ -13,7 +13,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,12 +28,25 @@ public class ProFrotasService {
     private static final long DELAY_RATE_LIMIT_MS = 5000;
 
     private final WebClient webClient;
+    private final Map<String, List<AbastecimentoResponse>> cache = new ConcurrentHashMap<>();
 
     public ProFrotasService(WebClient webClient) {
         this.webClient = webClient;
     }
 
     public List<AbastecimentoResponse> buscarAbastecimentos(String dataInicio, String dataFim) {
+        String chave = dataInicio + "_" + dataFim;
+
+        if (cache.containsKey(chave)) {
+            log.info("Cache hit: {}", chave);
+            return cache.get(chave);
+        }
+
+        List<AbastecimentoResponse> resultado = buscarDaApi(dataInicio, dataFim);
+        cache.put(chave, resultado);
+        return resultado;
+    }
+    private List<AbastecimentoResponse> buscarDaApi(String dataInicio, String dataFim) {
         List<AbastecimentoResponse> todosRegistros = new ArrayList<>();
         int paginaAtual = 1;
         boolean temMaisDados = true;
