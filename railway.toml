@@ -1,5 +1,0 @@
-[build]
-builder = "RAILPACK"
-
-[deploy]
-startCommand = "java -Dserver.port=$PORT -jar target/*.jar"
