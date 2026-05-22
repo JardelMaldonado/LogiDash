@@ -25,23 +25,7 @@ public class AbastecimentoResponse{
 
     @JsonProperty("items")
     private List<ItemAbastecimento> itensLista;
-
-    @JsonProperty("valorTotalCalculado")
-    public BigDecimal getValorTotalCalculado() {
-        if (itensLista == null) return BigDecimal.ZERO;
-        return itensLista.stream()
-                .map(item -> item.valorTotal() != null ? item.valorTotal() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    @JsonProperty("litros")
-    public BigDecimal getLitros() {
-        if (itensLista == null) return BigDecimal.ZERO;
-        return itensLista.stream()
-                .map(item -> item.quantidade() != null ? item.quantidade() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
+    
     public String getPlaca() { return veiculo != null ? veiculo.placa() : "N/A"; }
     public String getNomeMotorista() { return motorista != null ? motorista.nome() : "N/A"; }
 }

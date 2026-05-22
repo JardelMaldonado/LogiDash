@@ -11,11 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,29 +28,15 @@ public class ProFrotasService {
     private static final long DELAY_RATE_LIMIT_MS = 5000;
 
     private final WebClient webClient;
-    private final Map<String, List<AbastecimentoResponse>> cache = new ConcurrentHashMap<>();
 
     public ProFrotasService(WebClient webClient) {
         this.webClient = webClient;
     }
 
     public List<AbastecimentoResponse> buscarAbastecimentos(String dataInicio, String dataFim) {
-        String chave = dataInicio + "_" + dataFim;
-
-        if (cache.containsKey(chave)) {
-            log.info("Cache hit: {}", chave);
-            return cache.get(chave);
-        }
-
-        List<AbastecimentoResponse> resultado = buscarDaApi(dataInicio, dataFim);
-        cache.put(chave, resultado);
-        return resultado;
-    }
-    private List<AbastecimentoResponse> buscarDaApi(String dataInicio, String dataFim) {
         List<AbastecimentoResponse> todosRegistros = new ArrayList<>();
         int paginaAtual = 1;
         boolean temMaisDados = true;
-
 
         String inicioFormatado = dataInicio.contains("T") ? dataInicio : dataInicio + "T00:00:00";
         String fimFormatado = dataFim.contains("T") ? dataFim : dataFim + "T23:59:59";
@@ -73,6 +59,7 @@ public class ProFrotasService {
                         .bodyValue(filtro)
                         .retrieve()
                         .bodyToMono(ProFrotasResult.class)
+                        .timeout(Duration.ofSeconds(30))
                         .block();
 
                 if (result != null && result.registros() != null && !result.registros().isEmpty()) {
@@ -92,6 +79,7 @@ public class ProFrotasService {
                 }
             }
         }
+
         Set<Long> idsEstornados = todosRegistros.stream()
                 .filter(x -> x.getAbastecimentoEstornado() != null)
                 .map(AbastecimentoResponse::getAbastecimentoEstornado)
@@ -100,11 +88,17 @@ public class ProFrotasService {
 
         return todosRegistros.stream()
                 .filter(x -> x.getMotivoRecusa() == null || x.getMotivoRecusa().isBlank())
-                .filter(x -> x.getValorTotalCalculado() == null || x.getValorTotalCalculado().doubleValue() >= 0)
+                .filter(x -> { BigDecimal total = calcularValorTotal(x); return total == null || total.doubleValue() >= 0; })
                 .filter(x -> x.getItensLista() != null && !x.getItensLista().isEmpty())
                 .filter(x -> x.getData() != null && x.getData().substring(0, 10).compareTo(dataInicio) >= 0)
                 .filter(x -> !idsEstornados.contains(x.getIdentificador()))
                 .toList();
+    }
+    private BigDecimal calcularValorTotal(AbastecimentoResponse response) {
+        if (response.getItensLista() == null) return BigDecimal.ZERO;
+        return response.getItensLista().stream()
+                .map(item -> item.valorTotal() != null ? item.valorTotal() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
     private void aguardar(long milissegundos) {
         try {
