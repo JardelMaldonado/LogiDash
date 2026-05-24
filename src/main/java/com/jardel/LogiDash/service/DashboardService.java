@@ -1,7 +1,7 @@
 package com.jardel.LogiDash.service;
 
-import com.jardel.LogiDash.dto.abastecimento.AbastecimentoResponse;
-import com.jardel.LogiDash.dto.abastecimento.ItemAbastecimento;
+import com.jardel.LogiDash.database.model.AbastecimentoEntity;
+import com.jardel.LogiDash.database.model.AbastecimentoItemEntity;
 import com.jardel.LogiDash.dto.dashboard.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,20 +19,20 @@ public class DashboardService {
     private static final Logger log = LoggerFactory.getLogger(DashboardService.class);
     private static final int LIMITE_BALDE = 5;
 
-    private final ProFrotasService proFrotasService;
+    private final AbastecimentoService abastecimentoService;
 
     public DashboardResponse calcular(String dataInicial, String dataFinal, String placa, String motorista) {
-        List<AbastecimentoResponse> todos = proFrotasService.buscarAbastecimentos(dataInicial, dataFinal);
+        List<AbastecimentoEntity> todos = abastecimentoService.buscarEntities(dataInicial, dataFinal);
 
         List<String> todasPlacas = todos.stream()
-                .map(AbastecimentoResponse::getPlaca)
+                .map(AbastecimentoEntity::getPlaca)
                 .filter(p -> p != null && !p.isBlank())
                 .distinct()
                 .sorted()
                 .toList();
 
         List<String> todosMotoristas = todos.stream()
-                .map(AbastecimentoResponse::getNomeMotorista)
+                .map(AbastecimentoEntity::getNomeMotorista)
                 .filter(m -> m != null && !m.isBlank())
                 .distinct()
                 .sorted()
@@ -50,12 +49,12 @@ public class DashboardService {
                     .toList();
         }
 
-        List<AbastecimentoResponse> interno = todos.stream()
-                .filter(x -> x.getPontoVenda() != null && x.getPontoVenda().postoInterno())
+        List<AbastecimentoEntity> interno = todos.stream()
+                .filter(AbastecimentoEntity::isPostoInterno)
                 .toList();
 
-        List<AbastecimentoResponse> externo = todos.stream()
-                .filter(x -> x.getPontoVenda() != null && !x.getPontoVenda().postoInterno())
+        List<AbastecimentoEntity> externo = todos.stream()
+                .filter(x -> !x.isPostoInterno())
                 .toList();
 
         return new DashboardResponse(
@@ -73,33 +72,31 @@ public class DashboardService {
         );
     }
 
-
-    private BigDecimal calcularTotalGeral(List<AbastecimentoResponse> lista) {
+    private BigDecimal calcularTotalGeral(List<AbastecimentoEntity> lista) {
         return lista.stream()
                 .map(x -> x.getValorTotalCalculado() != null ? x.getValorTotalCalculado() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal calcularTotalLitros(List<AbastecimentoResponse> lista) {
+    private BigDecimal calcularTotalLitros(List<AbastecimentoEntity> lista) {
         return lista.stream()
-                .map(x -> x.getLitros() != null ? x.getLitros() : BigDecimal.ZERO)
+                .map(x -> x.getTotalLitros() != null ? x.getTotalLitros() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal somaLitrosPorNome(List<AbastecimentoResponse> lista, String nomeContem) {
+    private BigDecimal somaLitrosPorNome(List<AbastecimentoEntity> lista, String nomeContem) {
         return lista.stream()
-                .filter(a -> a.getItensLista() != null)
-                .flatMap(a -> a.getItensLista().stream())
-                .filter(i -> i.nome() != null && i.nome().toLowerCase().contains(nomeContem))
-                .map(i -> i.quantidade() != null ? i.quantidade() : BigDecimal.ZERO)
+                .filter(a -> a.getItens() != null)
+                .flatMap(a -> a.getItens().stream())
+                .filter(i -> i.getTipoCombustivel() != null && i.getTipoCombustivel().toLowerCase().contains(nomeContem))
+                .map(i -> i.getQuantidade() != null ? i.getQuantidade() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
-
-    private Consumo calcularConsumo(List<AbastecimentoResponse> interno, List<AbastecimentoResponse> externo) {
+    private Consumo calcularConsumo(List<AbastecimentoEntity> interno, List<AbastecimentoEntity> externo) {
         return new Consumo(
                 calcularTotalLitros(interno),
                 calcularTotalLitros(externo),
@@ -112,8 +109,7 @@ public class DashboardService {
         );
     }
 
-
-    private PrecoMedio calcularPrecoMedio(List<AbastecimentoResponse> interno, List<AbastecimentoResponse> externo) {
+    private PrecoMedio calcularPrecoMedio(List<AbastecimentoEntity> interno, List<AbastecimentoEntity> externo) {
         return new PrecoMedio(
                 mediaPreco(interno, "diesel"),
                 mediaPreco(externo, "diesel"),
@@ -125,21 +121,19 @@ public class DashboardService {
         );
     }
 
-    private List<RankingItem> calcularRankingPostos(List<AbastecimentoResponse> lista) {
+    private List<RankingItem> calcularRankingPostos(List<AbastecimentoEntity> lista) {
         Map<String, BigDecimal[]> mapa = new LinkedHashMap<>();
 
-        for (AbastecimentoResponse a : lista) {
-            String nome = a.getPontoVenda() != null
-                    ? a.getPontoVenda().razaoSocial().trim()
-                    : "Desconhecido";
+        for (AbastecimentoEntity a : lista) {
+            String nome = a.getRazaoSocialPosto() != null ? a.getRazaoSocialPosto().trim() : "Desconhecido";
             mapa.putIfAbsent(nome, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
             BigDecimal[] v = mapa.get(nome);
-            v[0] = v[0].add(a.getLitros() != null ? a.getLitros() : BigDecimal.ZERO);
+            v[0] = v[0].add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
             v[1] = v[1].add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
-            if (a.getItensLista() != null) {
-                for (ItemAbastecimento item : a.getItensLista()) {
-                    if (item.nome() != null && item.nome().toLowerCase().contains("diesel")) {
-                        v[2] = v[2].add(item.valorUnitario() != null ? item.valorUnitario() : BigDecimal.ZERO);
+            if (a.getItens() != null) {
+                for (AbastecimentoItemEntity item : a.getItens()) {
+                    if (item.getTipoCombustivel() != null && item.getTipoCombustivel().toLowerCase().contains("diesel")) {
+                        v[2] = v[2].add(item.getValorUnitario() != null ? item.getValorUnitario() : BigDecimal.ZERO);
                         v[3] = v[3].add(BigDecimal.ONE);
                     }
                 }
@@ -162,20 +156,20 @@ public class DashboardService {
                 .toList();
     }
 
-    private List<RankingItem> calcularRankingMotoristas(List<AbastecimentoResponse> lista) {
+    private List<RankingItem> calcularRankingMotoristas(List<AbastecimentoEntity> lista) {
         Map<String, Object[]> mapa = new LinkedHashMap<>();
 
-        for (AbastecimentoResponse a : lista) {
+        for (AbastecimentoEntity a : lista) {
             String nome = a.getNomeMotorista() != null ? a.getNomeMotorista().trim() : "Desconhecido";
             mapa.putIfAbsent(nome, new Object[]{BigDecimal.ZERO, BigDecimal.ZERO, 0, new HashMap<String, Integer>()});
             Object[] v = mapa.get(nome);
-            v[0] = ((BigDecimal) v[0]).add(a.getLitros() != null ? a.getLitros() : BigDecimal.ZERO);
+            v[0] = ((BigDecimal) v[0]).add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
             v[1] = ((BigDecimal) v[1]).add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
             v[2] = (int) v[2] + 1;
-            String placa = a.getPlaca() != null ? a.getPlaca() : "N/A";
+            String placaMotorista = a.getPlaca() != null ? a.getPlaca() : "N/A";
             @SuppressWarnings("unchecked")
             Map<String, Integer> placas = (Map<String, Integer>) v[3];
-            placas.merge(placa, 1, Integer::sum);
+            placas.merge(placaMotorista, 1, Integer::sum);
         }
 
         return mapa.entrySet().stream()
@@ -197,15 +191,15 @@ public class DashboardService {
                 .toList();
     }
 
-    private List<GastoDiario> calcularGastoDiario(List<AbastecimentoResponse> lista) {
+    private List<GastoDiario> calcularGastoDiario(List<AbastecimentoEntity> lista) {
         Map<String, BigDecimal[]> mapa = new TreeMap<>();
-        for (AbastecimentoResponse a : lista) {
+        for (AbastecimentoEntity a : lista) {
             if (a.getData() == null) continue;
-            String dia = a.getData().substring(0, 10);
+            String dia = a.getData().toLocalDate().toString();
             mapa.putIfAbsent(dia, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
             BigDecimal[] v = mapa.get(dia);
             v[0] = v[0].add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
-            v[1] = v[1].add(a.getLitros() != null ? a.getLitros() : BigDecimal.ZERO);
+            v[1] = v[1].add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
         }
         return mapa.entrySet().stream()
                 .map(e -> new GastoDiario(e.getKey(),
@@ -214,17 +208,17 @@ public class DashboardService {
                 .toList();
     }
 
-    private List<PrecoDiario> calcularPrecoDieselDiario(List<AbastecimentoResponse> externo) {
+    private List<PrecoDiario> calcularPrecoDieselDiario(List<AbastecimentoEntity> externo) {
         Map<String, BigDecimal[]> mapa = new TreeMap<>();
 
-        for (AbastecimentoResponse a : externo) {
-            if (a.getData() == null || a.getItensLista() == null) continue;
-            String dia = a.getData().substring(0, 10);
-            for (ItemAbastecimento item : a.getItensLista()) {
-                if (item.nome() != null && item.nome().toLowerCase().contains("diesel")) {
+        for (AbastecimentoEntity a : externo) {
+            if (a.getData() == null || a.getItens() == null) continue;
+            String dia = a.getData().toLocalDate().toString();
+            for (AbastecimentoItemEntity item : a.getItens()) {
+                if (item.getTipoCombustivel() != null && item.getTipoCombustivel().toLowerCase().contains("diesel")) {
                     mapa.putIfAbsent(dia, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
                     BigDecimal[] v = mapa.get(dia);
-                    v[0] = v[0].add(item.valorUnitario() != null ? item.valorUnitario() : BigDecimal.ZERO);
+                    v[0] = v[0].add(item.getValorUnitario() != null ? item.getValorUnitario() : BigDecimal.ZERO);
                     v[1] = v[1].add(BigDecimal.ONE);
                 }
             }
@@ -236,40 +230,36 @@ public class DashboardService {
                 .toList();
     }
 
-    private BigDecimal somaLitrosGranelComBaldesSuspeitos(List<AbastecimentoResponse> lista) {
-
+    private BigDecimal somaLitrosGranelComBaldesSuspeitos(List<AbastecimentoEntity> lista) {
         BigDecimal granel = somaLitrosPorNome(lista, "arla 32 - granel");
-
-
         BigDecimal baldeSuspeito = lista.stream()
-                .filter(a -> a.getItensLista() != null)
-                .flatMap(a -> a.getItensLista().stream())
-                .filter(i -> i.nome() != null && i.nome().toLowerCase().contains("arla 32 - balde"))
-                .filter(i -> i.quantidade() != null && i.quantidade().compareTo(BigDecimal.valueOf(LIMITE_BALDE)) > 0)
-                .map(i -> i.quantidade())
+                .filter(a -> a.getItens() != null)
+                .flatMap(a -> a.getItens().stream())
+                .filter(i -> i.getTipoCombustivel() != null && i.getTipoCombustivel().toLowerCase().contains("arla 32 - balde"))
+                .filter(i -> i.getQuantidade() != null && i.getQuantidade().compareTo(BigDecimal.valueOf(LIMITE_BALDE)) > 0)
+                .map(AbastecimentoItemEntity::getQuantidade)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
-
         return granel.add(baldeSuspeito);
     }
 
-    private BigDecimal somaLitrosBalde(List<AbastecimentoResponse> lista, String nomeContem) {
+    private BigDecimal somaLitrosBalde(List<AbastecimentoEntity> lista, String nomeContem) {
         return lista.stream()
-                .filter(a -> a.getItensLista() != null)
-                .flatMap(a -> a.getItensLista().stream())
-                .filter(i -> i.nome() != null && i.nome().toLowerCase().contains(nomeContem))
-                .filter(i -> i.quantidade() != null && i.quantidade().compareTo(BigDecimal.valueOf(LIMITE_BALDE)) <= 0)
-                .map(i -> i.quantidade().multiply(BigDecimal.valueOf(20)))
+                .filter(a -> a.getItens() != null)
+                .flatMap(a -> a.getItens().stream())
+                .filter(i -> i.getTipoCombustivel() != null && i.getTipoCombustivel().toLowerCase().contains(nomeContem))
+                .filter(i -> i.getQuantidade() != null && i.getQuantidade().compareTo(BigDecimal.valueOf(LIMITE_BALDE)) <= 0)
+                .map(i -> i.getQuantidade().multiply(BigDecimal.valueOf(20)))
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal mediaPreco(List<AbastecimentoResponse> lista, String nomeContem) {
+    private BigDecimal mediaPreco(List<AbastecimentoEntity> lista, String nomeContem) {
         List<BigDecimal> precos = lista.stream()
-                .filter(a -> a.getItensLista() != null)
-                .flatMap(a -> a.getItensLista().stream())
-                .filter(i -> i.nome() != null && i.nome().toLowerCase().contains(nomeContem))
-                .map(i -> i.valorUnitario())
+                .filter(a -> a.getItens() != null)
+                .flatMap(a -> a.getItens().stream())
+                .filter(i -> i.getTipoCombustivel() != null && i.getTipoCombustivel().toLowerCase().contains(nomeContem))
+                .map(AbastecimentoItemEntity::getValorUnitario)
                 .filter(v -> v != null && v.compareTo(BigDecimal.ZERO) > 0)
                 .toList();
         if (precos.isEmpty()) return BigDecimal.ZERO;
@@ -277,7 +267,7 @@ public class DashboardService {
         return soma.divide(BigDecimal.valueOf(precos.size()), 2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal mediaPrecoBaldeParaLitro(List<AbastecimentoResponse> lista, String nomeContem) {
+    private BigDecimal mediaPrecoBaldeParaLitro(List<AbastecimentoEntity> lista, String nomeContem) {
         BigDecimal media = mediaPreco(lista, nomeContem);
         if (media.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
         return media.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
