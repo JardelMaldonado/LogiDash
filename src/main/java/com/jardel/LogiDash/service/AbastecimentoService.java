@@ -69,7 +69,7 @@ public class AbastecimentoService {
     public List<AbastecimentoEntity> buscarEntities(String dataInicio, String dataFim) {
         LocalDateTime inicio = LocalDateTime.parse(dataInicio + "T00:00:00");
         LocalDateTime fim = LocalDateTime.parse(dataFim + "T23:59:59");
-        return abastecimentoRepository.findByDataBetween(inicio, fim);
+        return abastecimentoRepository.findByDataBetweenWithItens(inicio, fim);
     }
     public List<Abastecimento> buscarAbastecimentos(String dataInicio, String dataFim) {
         List<AbastecimentoEntity> entities = buscarEntities(dataInicio, dataFim);
