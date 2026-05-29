@@ -15,7 +15,7 @@ public class CookieUtil {
         return ResponseCookie.from("auth_token", token)
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("Strict")
+                .sameSite("None")
                 .path("/")
                 .maxAge(Duration.ofMillis(expiracaoMs))
                 .build();
@@ -25,7 +25,7 @@ public class CookieUtil {
         return ResponseCookie.from("auth_token", "")
                 .httpOnly(true)
                 .secure(true)
-                .sameSite("Strict")
+                .sameSite("None")
                 .path("/")
                 .maxAge(0)
                 .build();
