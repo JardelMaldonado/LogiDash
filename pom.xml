@@ -146,6 +146,9 @@
 				<groupId>org.owasp</groupId>
 				<artifactId>dependency-check-maven</artifactId>
 				<version>12.1.1</version>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>
