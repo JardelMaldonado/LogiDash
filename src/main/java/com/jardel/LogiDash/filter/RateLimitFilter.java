@@ -1,4 +1,4 @@
-package com.jardel.LogiDash.config;
+package com.jardel.LogiDash.filter;
 
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
