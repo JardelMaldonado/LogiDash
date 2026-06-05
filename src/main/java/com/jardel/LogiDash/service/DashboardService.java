@@ -71,7 +71,6 @@ public class DashboardService {
                 todosMotoristas
         );
     }
-
     private BigDecimal calcularTotalGeral(List<AbastecimentoEntity> lista) {
         return lista.stream()
                 .map(x -> x.getValorTotalCalculado() != null ? x.getValorTotalCalculado() : BigDecimal.ZERO)
@@ -122,19 +121,22 @@ public class DashboardService {
     }
 
     private List<RankingItem> calcularRankingPostos(List<AbastecimentoEntity> lista) {
-        Map<String, BigDecimal[]> mapa = new LinkedHashMap<>();
+        Map<String, PostoAgregado> mapa = new LinkedHashMap<>();
 
         for (AbastecimentoEntity a : lista) {
             String nome = a.getRazaoSocialPosto() != null ? a.getRazaoSocialPosto().trim() : "Desconhecido";
-            mapa.putIfAbsent(nome, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO});
-            BigDecimal[] v = mapa.get(nome);
-            v[0] = v[0].add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
-            v[1] = v[1].add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
+
+            mapa.putIfAbsent(nome, new PostoAgregado());
+            PostoAgregado posto = mapa.get(nome);
+
+            posto.totalLitros = posto.totalLitros.add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
+            posto.totalGasto = posto.totalGasto.add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
+
             if (a.getItens() != null) {
                 for (AbastecimentoItemEntity item : a.getItens()) {
                     if (item.getTipoCombustivel() != null && item.getTipoCombustivel().toLowerCase().contains("diesel")) {
-                        v[2] = v[2].add(item.getValorUnitario() != null ? item.getValorUnitario() : BigDecimal.ZERO);
-                        v[3] = v[3].add(BigDecimal.ONE);
+                        posto.somaPrecoDiesel = posto.somaPrecoDiesel.add(item.getValorUnitario() != null ? item.getValorUnitario() : BigDecimal.ZERO);
+                        posto.contagemDiesel = posto.contagemDiesel.add(BigDecimal.ONE);
                     }
                 }
             }
@@ -142,13 +144,12 @@ public class DashboardService {
 
         return mapa.entrySet().stream()
                 .map(e -> {
-                    BigDecimal[] v = e.getValue();
-                    BigDecimal precoDiesel = v[3].compareTo(BigDecimal.ZERO) > 0
-                            ? v[2].divide(v[3], 2, RoundingMode.HALF_UP)
-                            : BigDecimal.ZERO;
-                    return new RankingItem(e.getKey(),
-                            v[0].setScale(2, RoundingMode.HALF_UP),
-                            v[1].setScale(2, RoundingMode.HALF_UP),
+                    PostoAgregado posto = e.getValue();
+                    BigDecimal precoDiesel = posto.contagemDiesel.compareTo(BigDecimal.ZERO) > 0 ? posto.somaPrecoDiesel.divide(posto.contagemDiesel, 2, RoundingMode.HALF_UP) : BigDecimal.ZERO;
+                    return new RankingItem(
+                            e.getKey(),
+                            posto.totalLitros.setScale(2, RoundingMode.HALF_UP),
+                            posto.totalGasto.setScale(2, RoundingMode.HALF_UP),
                             precoDiesel, null, null);
                 })
                 .sorted(Comparator.comparing(RankingItem::litros).reversed())
@@ -157,34 +158,34 @@ public class DashboardService {
     }
 
     private List<RankingItem> calcularRankingMotoristas(List<AbastecimentoEntity> lista) {
-        Map<String, Object[]> mapa = new LinkedHashMap<>();
+        Map<String, MotoristaAgregado> mapa = new LinkedHashMap<>();
 
         for (AbastecimentoEntity a : lista) {
             String nome = a.getNomeMotorista() != null ? a.getNomeMotorista().trim() : "Desconhecido";
-            mapa.putIfAbsent(nome, new Object[]{BigDecimal.ZERO, BigDecimal.ZERO, 0, new HashMap<String, Integer>()});
-            Object[] v = mapa.get(nome);
-            v[0] = ((BigDecimal) v[0]).add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
-            v[1] = ((BigDecimal) v[1]).add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
-            v[2] = (int) v[2] + 1;
+
+            mapa.putIfAbsent(nome, new MotoristaAgregado());
+            MotoristaAgregado motorista = mapa.get(nome);
+
+            motorista.totalLitros = motorista.totalLitros.add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
+            motorista.totalGasto = motorista.totalGasto.add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
+            motorista.abastecimentos++;
+
             String placaMotorista = a.getPlaca() != null ? a.getPlaca() : "N/A";
-            @SuppressWarnings("unchecked")
-            Map<String, Integer> placas = (Map<String, Integer>) v[3];
-            placas.merge(placaMotorista, 1, Integer::sum);
+            motorista.placas.merge(placaMotorista, 1, Integer::sum);
         }
 
         return mapa.entrySet().stream()
                 .map(e -> {
-                    Object[] v = e.getValue();
-                    @SuppressWarnings("unchecked")
-                    Map<String, Integer> placas = (Map<String, Integer>) v[3];
-                    String placaPrincipal = placas.entrySet().stream()
+                    MotoristaAgregado motorista = e.getValue();
+                    String placaPrincipal = motorista.placas.entrySet().stream()
                             .max(Map.Entry.comparingByValue())
                             .map(Map.Entry::getKey)
                             .orElse("N/A");
-                    return new RankingItem(e.getKey(),
-                            ((BigDecimal) v[0]).setScale(2, RoundingMode.HALF_UP),
-                            ((BigDecimal) v[1]).setScale(2, RoundingMode.HALF_UP),
-                            null, (int) v[2], placaPrincipal);
+                    return new RankingItem(
+                            e.getKey(),
+                            motorista.totalLitros.setScale(2, RoundingMode.HALF_UP),
+                            motorista.totalGasto.setScale(2, RoundingMode.HALF_UP),
+                            null, motorista.abastecimentos, placaPrincipal);
                 })
                 .sorted(Comparator.comparing(RankingItem::litros).reversed())
                 .limit(10)
@@ -192,41 +193,48 @@ public class DashboardService {
     }
 
     private List<GastoDiario> calcularGastoDiario(List<AbastecimentoEntity> lista) {
-        Map<String, BigDecimal[]> mapa = new TreeMap<>();
+        Map<String, DiaAgregado> mapa = new TreeMap<>();
+
         for (AbastecimentoEntity a : lista) {
             if (a.getData() == null) continue;
             String dia = a.getData().toLocalDate().toString();
-            mapa.putIfAbsent(dia, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
-            BigDecimal[] v = mapa.get(dia);
-            v[0] = v[0].add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
-            v[1] = v[1].add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
+
+            mapa.putIfAbsent(dia, new DiaAgregado());
+            DiaAgregado diaAgregado = mapa.get(dia);
+
+            diaAgregado.totalGasto = diaAgregado.totalGasto.add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
+            diaAgregado.totalLitros = diaAgregado.totalLitros.add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
         }
         return mapa.entrySet().stream()
-                .map(e -> new GastoDiario(e.getKey(),
-                        e.getValue()[0].setScale(2, RoundingMode.HALF_UP),
-                        e.getValue()[1].setScale(2, RoundingMode.HALF_UP)))
+                .map(e -> new GastoDiario(
+                        e.getKey(),
+                        e.getValue().totalGasto.setScale(2, RoundingMode.HALF_UP),
+                        e.getValue().totalLitros.setScale(2, RoundingMode.HALF_UP)))
                 .toList();
     }
 
     private List<PrecoDiario> calcularPrecoDieselDiario(List<AbastecimentoEntity> externo) {
-        Map<String, BigDecimal[]> mapa = new TreeMap<>();
+        Map<String, DiaDieselAgregado> mapa = new TreeMap<>();
 
         for (AbastecimentoEntity a : externo) {
             if (a.getData() == null || a.getItens() == null) continue;
             String dia = a.getData().toLocalDate().toString();
+
             for (AbastecimentoItemEntity item : a.getItens()) {
                 if (item.getTipoCombustivel() != null && item.getTipoCombustivel().toLowerCase().contains("diesel")) {
-                    mapa.putIfAbsent(dia, new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
-                    BigDecimal[] v = mapa.get(dia);
-                    v[0] = v[0].add(item.getValorUnitario() != null ? item.getValorUnitario() : BigDecimal.ZERO);
-                    v[1] = v[1].add(BigDecimal.ONE);
+                    mapa.putIfAbsent(dia, new DiaDieselAgregado());
+                    DiaDieselAgregado diaAgregado = mapa.get(dia);
+
+                    diaAgregado.somaPrecoDiesel = diaAgregado.somaPrecoDiesel.add(item.getValorUnitario() != null ? item.getValorUnitario() : BigDecimal.ZERO);
+                    diaAgregado.contagemDiesel = diaAgregado.contagemDiesel.add(BigDecimal.ONE);
                 }
             }
         }
         return mapa.entrySet().stream()
-                .filter(e -> e.getValue()[1].compareTo(BigDecimal.ZERO) > 0)
-                .map(e -> new PrecoDiario(e.getKey(),
-                        e.getValue()[0].divide(e.getValue()[1], 4, RoundingMode.HALF_UP)))
+                .filter(e -> e.getValue().contagemDiesel.compareTo(BigDecimal.ZERO) > 0)
+                .map(e -> new PrecoDiario(
+                        e.getKey(),
+                        e.getValue().somaPrecoDiesel.divide(e.getValue().contagemDiesel, 4, RoundingMode.HALF_UP)))
                 .toList();
     }
 
@@ -268,8 +276,40 @@ public class DashboardService {
     }
 
     private BigDecimal mediaPrecoBaldeParaLitro(List<AbastecimentoEntity> lista, String nomeContem) {
-        BigDecimal media = mediaPreco(lista, nomeContem);
-        if (media.compareTo(BigDecimal.ZERO) == 0) return BigDecimal.ZERO;
-        return media.divide(BigDecimal.valueOf(20), 2, RoundingMode.HALF_UP);
+        List<BigDecimal> precos = lista.stream()
+                .filter(a -> a.getItens() != null)
+                .flatMap(a -> a.getItens().stream())
+                .filter(i -> i.getTipoCombustivel() != null && i.getTipoCombustivel().toLowerCase().contains(nomeContem))
+                .filter(i -> i.getQuantidade() != null && i.getQuantidade().compareTo(BigDecimal.valueOf(LIMITE_BALDE)) <= 0)
+                .filter(i -> i.getValorUnitario() != null && i.getValorUnitario().compareTo(BigDecimal.ZERO) > 0)
+                .map(v -> v.getValorUnitario().divide(BigDecimal.valueOf(20), 4, RoundingMode.HALF_UP))
+                .toList();
+        if (precos.isEmpty()) return BigDecimal.ZERO;
+        BigDecimal soma = precos.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+        return soma.divide(BigDecimal.valueOf(precos.size()), 4, RoundingMode.HALF_UP);
+    }
+
+    private static class PostoAgregado {
+        BigDecimal totalLitros     = BigDecimal.ZERO;
+        BigDecimal totalGasto      = BigDecimal.ZERO;
+        BigDecimal somaPrecoDiesel = BigDecimal.ZERO;
+        BigDecimal contagemDiesel  = BigDecimal.ZERO;
+    }
+
+    private static class MotoristaAgregado {
+        BigDecimal totalLitros    = BigDecimal.ZERO;
+        BigDecimal totalGasto     = BigDecimal.ZERO;
+        int        abastecimentos = 0;
+        Map<String, Integer> placas = new HashMap<>();
+    }
+
+    private static class DiaAgregado {
+        BigDecimal totalGasto  = BigDecimal.ZERO;
+        BigDecimal totalLitros = BigDecimal.ZERO;
+    }
+
+    private static class DiaDieselAgregado {
+        BigDecimal somaPrecoDiesel = BigDecimal.ZERO;
+        BigDecimal contagemDiesel  = BigDecimal.ZERO;
     }
 }
