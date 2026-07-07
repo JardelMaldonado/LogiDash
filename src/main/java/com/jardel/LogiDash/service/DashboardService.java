@@ -73,14 +73,14 @@ public class DashboardService {
     }
     private BigDecimal calcularTotalGeral(List<AbastecimentoEntity> lista) {
         return lista.stream()
-                .map(x -> x.getValorTotalCalculado() != null ? x.getValorTotalCalculado() : BigDecimal.ZERO)
+                .map(this::valorTotalDe)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calcularTotalLitros(List<AbastecimentoEntity> lista) {
         return lista.stream()
-                .map(x -> x.getTotalLitros() != null ? x.getTotalLitros() : BigDecimal.ZERO)
+                .map(this::totalLitrosDe)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
                 .setScale(2, RoundingMode.HALF_UP);
     }
@@ -129,8 +129,8 @@ public class DashboardService {
             mapa.putIfAbsent(nome, new PostoAgregado());
             PostoAgregado posto = mapa.get(nome);
 
-            posto.totalLitros = posto.totalLitros.add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
-            posto.totalGasto = posto.totalGasto.add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
+            posto.totalLitros = posto.totalLitros.add(totalLitrosDe(a));
+            posto.totalGasto  = posto.totalGasto.add(valorTotalDe(a));
 
             if (a.getItens() != null) {
                 for (AbastecimentoItemEntity item : a.getItens()) {
@@ -166,8 +166,8 @@ public class DashboardService {
             mapa.putIfAbsent(nome, new MotoristaAgregado());
             MotoristaAgregado motorista = mapa.get(nome);
 
-            motorista.totalLitros = motorista.totalLitros.add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
-            motorista.totalGasto = motorista.totalGasto.add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
+            motorista.totalLitros = motorista.totalLitros.add(totalLitrosDe(a));
+            motorista.totalGasto  = motorista.totalGasto.add(valorTotalDe(a));
             motorista.abastecimentos++;
 
             String placaMotorista = a.getPlaca() != null ? a.getPlaca() : "N/A";
@@ -202,8 +202,8 @@ public class DashboardService {
             mapa.putIfAbsent(dia, new DiaAgregado());
             DiaAgregado diaAgregado = mapa.get(dia);
 
-            diaAgregado.totalGasto = diaAgregado.totalGasto.add(a.getValorTotalCalculado() != null ? a.getValorTotalCalculado() : BigDecimal.ZERO);
-            diaAgregado.totalLitros = diaAgregado.totalLitros.add(a.getTotalLitros() != null ? a.getTotalLitros() : BigDecimal.ZERO);
+            diaAgregado.totalGasto  = diaAgregado.totalGasto.add(valorTotalDe(a));
+            diaAgregado.totalLitros = diaAgregado.totalLitros.add(totalLitrosDe(a));
         }
         return mapa.entrySet().stream()
                 .map(e -> new GastoDiario(
@@ -287,6 +287,20 @@ public class DashboardService {
         if (precos.isEmpty()) return BigDecimal.ZERO;
         BigDecimal soma = precos.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
         return soma.divide(BigDecimal.valueOf(precos.size()), 4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal totalLitrosDe(AbastecimentoEntity a) {
+        if (a.getItens() == null) return BigDecimal.ZERO;
+        return a.getItens().stream()
+                .map(i -> i.getQuantidade() != null ? i.getQuantidade() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal valorTotalDe(AbastecimentoEntity a) {
+        if (a.getItens() == null) return BigDecimal.ZERO;
+        return a.getItens().stream()
+                .map(i -> i.getValorTotal() != null ? i.getValorTotal() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private static class PostoAgregado {
