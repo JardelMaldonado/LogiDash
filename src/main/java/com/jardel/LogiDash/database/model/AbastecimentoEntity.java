@@ -42,17 +42,4 @@ public class AbastecimentoEntity implements Serializable {
     @OneToMany(mappedBy = "abastecimento", cascade = CascadeType.ALL)
     private List<AbastecimentoItemEntity> itens;
 
-    public BigDecimal getTotalLitros() {
-        if (itens == null) return BigDecimal.ZERO;
-        return itens.stream()
-                .map(i -> i.getQuantidade() != null ? i.getQuantidade() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    public BigDecimal getValorTotalCalculado() {
-        if (itens == null) return BigDecimal.ZERO;
-        return itens.stream()
-                .map(i -> i.getValorTotal() != null ? i.getValorTotal() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
 }
