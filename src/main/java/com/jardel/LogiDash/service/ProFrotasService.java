@@ -87,19 +87,20 @@ public class ProFrotasService {
                 .collect(Collectors.toSet());
 
         return todosRegistros.stream()
-                .filter(x -> x.getMotivoRecusa() == null || x.getMotivoRecusa().isBlank())
-                .filter(x -> { BigDecimal total = calcularValorTotal(x); return total == null || total.doubleValue() >= 0; })
-                .filter(x -> x.getItensLista() != null && !x.getItensLista().isEmpty())
-                .filter(x -> x.getData() != null && x.getData().substring(0, 10).compareTo(dataInicio) >= 0)
-                .filter(x -> !idsEstornados.contains(x.getIdentificador()))
+                .filter(x -> isAbastecimentoValido(x, dataInicio, idsEstornados))
                 .toList();
     }
-    private BigDecimal calcularValorTotal(AbastecimentoResponse response) {
-        if (response.getItensLista() == null) return BigDecimal.ZERO;
-        return response.getItensLista().stream()
-                .map(item -> item.valorTotal() != null ? item.valorTotal() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    private boolean isAbastecimentoValido(AbastecimentoResponse x, String dataInicio, Set<Long> idsEstornados) {
+        return (x.getMotivoRecusa() == null || x.getMotivoRecusa().isBlank()) &&
+                (!idsEstornados.contains(x.getIdentificador())) &&
+                (x.getItensLista() != null && !x.getItensLista().isEmpty()) &&
+                (x.getData() != null && x.getData().substring(0, 10).compareTo(dataInicio) >= 0) &&
+                (x.getItensLista().stream()
+                        .anyMatch(item -> item.quantidade() != null
+                                && item.quantidade().compareTo(BigDecimal.ZERO) > 0));
     }
+
     private void aguardar(long milissegundos) {
         try {
             Thread.sleep(milissegundos);
