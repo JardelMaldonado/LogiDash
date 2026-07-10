@@ -99,20 +99,20 @@ class DashboardServiceTest {
         assertThat(response.totalGeral()).isEqualByComparingTo(new BigDecimal("600.00"));
     }
     @Test
-    @DisplayName("Deve retornar as placas corretamente")
-    void deveRetornarAsPlacasCorretamente() {
+    @DisplayName("Deve filtrar abastecimentos por placa corretamente")
+    void deveFiltrarPorPlacaCorretamente() {
 
         AbastecimentoItemEntity item = new AbastecimentoItemEntity();
         item.setTipoCombustivel("Diesel");
         item.setQuantidade(new BigDecimal("400"));
         item.setValorUnitario(new BigDecimal("6.11"));
-        item.setValorTotal(new BigDecimal("1600.00"));
+        item.setValorTotal(new BigDecimal("2444.00"));
 
         AbastecimentoItemEntity item2 = new AbastecimentoItemEntity();
         item2.setTipoCombustivel("Diesel");
         item2.setQuantidade(new BigDecimal("500"));
         item2.setValorUnitario(new BigDecimal("6.11"));
-        item2.setValorTotal(new BigDecimal("1800.00"));
+        item2.setValorTotal(new BigDecimal("3055.00"));
 
         AbastecimentoEntity abastecimento = new AbastecimentoEntity();
         abastecimento.setPlaca("ABC1234");
@@ -138,9 +138,48 @@ class DashboardServiceTest {
                 "2024-01-01", "2024-01-31", "ABC1234", null
         );
 
-
         assertThat(response.totalAbastecimentos()).isEqualTo(1);
         assertThat(response.totalLitros()).isEqualByComparingTo(new BigDecimal("400.00"));
+    }
+    @Test
+    @DisplayName("todasPlacas() deve retornar todas as placas independente do filtro aplicado")
+    void deveRetornarTodasAsPlacasIndependenteDoFiltro() {
+
+        AbastecimentoItemEntity item = new AbastecimentoItemEntity();
+        item.setTipoCombustivel("Diesel");
+        item.setQuantidade(new BigDecimal("400"));
+        item.setValorUnitario(new BigDecimal("6.11"));
+        item.setValorTotal(new BigDecimal("2444.00"));
+
+        AbastecimentoItemEntity item2 = new AbastecimentoItemEntity();
+        item2.setTipoCombustivel("Diesel");
+        item2.setQuantidade(new BigDecimal("500"));
+        item2.setValorUnitario(new BigDecimal("6.11"));
+        item2.setValorTotal(new BigDecimal("3055.00"));
+
+        AbastecimentoEntity abastecimento = new AbastecimentoEntity();
+        abastecimento.setPlaca("ABC1234");
+        abastecimento.setNomeMotorista("João");
+        abastecimento.setPostoInterno(false);
+        abastecimento.setRazaoSocialPosto("Posto Externo SA");
+        abastecimento.setData(LocalDateTime.of(2024, 1, 10, 8, 0));
+        abastecimento.setItens(List.of(item));
+
+        AbastecimentoEntity abastecimento2 = new AbastecimentoEntity();
+        abastecimento2.setPlaca("XYZ5678");
+        abastecimento2.setNomeMotorista("Maria");
+        abastecimento2.setPostoInterno(false);
+        abastecimento2.setRazaoSocialPosto("Posto Externo SA");
+        abastecimento2.setData(LocalDateTime.of(2024, 1, 11, 8, 0));
+        abastecimento2.setItens(List.of(item2));
+
+        when(abastecimentoService.buscarEntities("2024-01-01", "2024-01-31"))
+                .thenReturn(List.of(abastecimento, abastecimento2));
+
+        DashboardResponse response = dashboardService.calcular(
+                "2024-01-01", "2024-01-31", "ABC1234", null
+        );
+
         assertThat(response.todasPlacas()).containsExactly("ABC1234", "XYZ5678");
     }
     @Test
@@ -151,19 +190,19 @@ class DashboardServiceTest {
         item.setTipoCombustivel("Diesel");
         item.setQuantidade(new BigDecimal("800"));
         item.setValorUnitario(new BigDecimal("6.11"));
-        item.setValorTotal(new BigDecimal("3200.00"));
+        item.setValorTotal(new BigDecimal("4888.00"));
 
         AbastecimentoItemEntity itemDiesel2 = new AbastecimentoItemEntity();
         itemDiesel2.setTipoCombustivel("Diesel");
         itemDiesel2.setQuantidade(new BigDecimal("500"));
         itemDiesel2.setValorUnitario(new BigDecimal("6.11"));
-        itemDiesel2.setValorTotal(new BigDecimal("1800.00"));
+        itemDiesel2.setValorTotal(new BigDecimal("3055.00"));
 
         AbastecimentoItemEntity itemArlaGranel = new AbastecimentoItemEntity();
         itemArlaGranel.setTipoCombustivel("arla 32 - granel");
         itemArlaGranel.setQuantidade(new BigDecimal("50"));
         itemArlaGranel.setValorUnitario(new BigDecimal("3.49"));
-        itemArlaGranel.setValorTotal(new BigDecimal("175.00"));
+        itemArlaGranel.setValorTotal(new BigDecimal("174.50"));
 
         AbastecimentoEntity abastecimento = new AbastecimentoEntity();
         abastecimento.setPlaca("QOX2B71");
@@ -204,7 +243,7 @@ class DashboardServiceTest {
         itemArlaBalde.setTipoCombustivel("arla 32 - balde");
         itemArlaBalde.setQuantidade(new BigDecimal("50.00"));
         itemArlaBalde.setValorUnitario(new BigDecimal("3.49"));
-        itemArlaBalde.setValorTotal(new BigDecimal("175.00"));
+        itemArlaBalde.setValorTotal(new BigDecimal("174.50"));
 
         AbastecimentoEntity abastecimento = new AbastecimentoEntity();
         abastecimento.setPlaca("QOX2B71");
@@ -263,13 +302,13 @@ class DashboardServiceTest {
         itemDiesel.setTipoCombustivel("Diesel");
         itemDiesel.setQuantidade(new BigDecimal("400"));
         itemDiesel.setValorUnitario(new BigDecimal("6.11"));
-        itemDiesel.setValorTotal(new BigDecimal("1600.00"));
+        itemDiesel.setValorTotal(new BigDecimal("2444.00"));
 
         AbastecimentoItemEntity itemDiesel2 = new AbastecimentoItemEntity();
         itemDiesel2.setTipoCombustivel("Diesel");
         itemDiesel2.setQuantidade(new BigDecimal("500"));
         itemDiesel2.setValorUnitario(new BigDecimal("6.11"));
-        itemDiesel2.setValorTotal(new BigDecimal("1800.00"));
+        itemDiesel2.setValorTotal(new BigDecimal("3055.00"));
 
         AbastecimentoEntity abastecimento = new AbastecimentoEntity();
         abastecimento.setPlaca("RMN0D02");
@@ -298,7 +337,7 @@ class DashboardServiceTest {
 
         assertThat(response.totalAbastecimentos()).isEqualTo(1);
         assertThat(response.totalLitros()).isEqualByComparingTo(new BigDecimal("400.00"));
-        assertThat(response.todosMotoristas()).containsExactlyInAnyOrder("Jardel", "Luiz");
+        assertThat(response.todosMotoristas()).containsExactly("Jardel", "Luiz");
     }
     @Test
     @DisplayName("Deve retornar os postos com maiores consumos corretamente")
@@ -308,13 +347,13 @@ class DashboardServiceTest {
         itemDiesel.setTipoCombustivel("Diesel");
         itemDiesel.setQuantidade(new BigDecimal("800"));
         itemDiesel.setValorUnitario(new BigDecimal("6.11"));
-        itemDiesel.setValorTotal(new BigDecimal("3200.00"));
+        itemDiesel.setValorTotal(new BigDecimal("4888.00"));
 
         AbastecimentoItemEntity itemDiesel2 = new AbastecimentoItemEntity();
         itemDiesel2.setTipoCombustivel("Diesel");
         itemDiesel2.setQuantidade(new BigDecimal("500"));
         itemDiesel2.setValorUnitario(new BigDecimal("6.11"));
-        itemDiesel2.setValorTotal(new BigDecimal("1800.00"));
+        itemDiesel2.setValorTotal(new BigDecimal("3055.00"));
 
 
         AbastecimentoEntity abastecimento = new AbastecimentoEntity();
@@ -355,13 +394,13 @@ class DashboardServiceTest {
         item.setTipoCombustivel("Diesel");
         item.setQuantidade(new BigDecimal("400"));
         item.setValorUnitario(new BigDecimal("6.11"));
-        item.setValorTotal(new BigDecimal("1600.00"));
+        item.setValorTotal(new BigDecimal("2444.00"));
 
         AbastecimentoItemEntity item2 = new AbastecimentoItemEntity();
         item2.setTipoCombustivel("Diesel");
         item2.setQuantidade(new BigDecimal("500"));
         item2.setValorUnitario(new BigDecimal("6.89"));
-        item2.setValorTotal(new BigDecimal("2000.00"));
+        item2.setValorTotal(new BigDecimal("3445.00"));
 
         AbastecimentoEntity abastecimento = new AbastecimentoEntity();
         abastecimento.setPlaca("RMQ1C72");
@@ -391,7 +430,7 @@ class DashboardServiceTest {
         assertThat(response.totalAbastecimentos()).isEqualTo(2);
         assertThat(response.gastoDiario()).hasSize(1);
         assertThat(response.gastoDiario().get(0).dia()).isEqualTo("2024-01-10");
-        assertThat(response.gastoDiario().get(0).valor()).isEqualByComparingTo(new BigDecimal("3600.00"));
+        assertThat(response.gastoDiario().get(0).valor()).isEqualByComparingTo(new BigDecimal("5889.00"));
         assertThat(response.gastoDiario().get(0).litros()).isEqualByComparingTo(new BigDecimal("900.00"));
     }
 }
