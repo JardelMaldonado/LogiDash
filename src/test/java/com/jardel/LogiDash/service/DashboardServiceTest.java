@@ -29,7 +29,7 @@ class DashboardServiceTest {
 
     @Test
     @DisplayName("Quando não há abastecimentos, todos os totais devem ser zero")
-    void quandoListaVazia_devRetornarTotaisZerados() {
+    void quandoListaVazia_deveRetornarTotaisZerados() {
 
 
         when(abastecimentoService.buscarEntities("2024-01-01", "2024-01-31"))
@@ -67,7 +67,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Deve calcular total geral corretamente com um abastecimento")
-    void deveCalcularTotalGeralComUmAbastecimento() {
+    void quandoUmAbastecimento_deveRetornarTotalGeralCorretamente() {
 
         AbastecimentoItemEntity item = new AbastecimentoItemEntity();
         item.setTipoCombustivel("Diesel");
@@ -100,7 +100,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Deve filtrar abastecimentos por placa corretamente")
-    void deveFiltrarPorPlacaCorretamente() {
+    void quandoFiltradoPorPlaca_deveRetornarApenasAbastecimentosDaPlaca() {
 
         AbastecimentoItemEntity item = new AbastecimentoItemEntity();
         item.setTipoCombustivel("Diesel");
@@ -143,7 +143,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("todasPlacas() deve retornar todas as placas independente do filtro aplicado")
-    void deveRetornarTodasAsPlacasIndependenteDoFiltro() {
+    void quandoFiltroAplicado_deveRetornarTodasAsPlacasIndependenteDoFiltro() {
 
         AbastecimentoItemEntity item = new AbastecimentoItemEntity();
         item.setTipoCombustivel("Diesel");
@@ -184,7 +184,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Deve retornar as somas das quantidades dos itens corretamente")
-    void deveRetornarAsSomasCorretamente() {
+    void quandoExistemItensDieselEArlaGranel_deveRetornarSomasCorretamente() {
 
         AbastecimentoItemEntity item = new AbastecimentoItemEntity();
         item.setTipoCombustivel("Diesel");
@@ -236,7 +236,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Arla Balde com quantidade maior que 5 deve ser somado no granel externo")
-    void deveClassificarArlaBaldeSuspeitoComoGranel() {
+    void quandoArlaBaldeComQuantidadeMaiorQueCinco_deveClassificarComoGranel() {
 
 
         AbastecimentoItemEntity itemArlaBalde = new AbastecimentoItemEntity();
@@ -268,7 +268,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Arla Balde com quantidade menor ou igual a 5 deve ser convertido para litros (x20)")
-    void deveConverterArlaBaldeRealParaLitros() {
+    void quandoArlaBaldeComQuantidadeMenorOuIgualACinco_deveConverterParaLitros() {
 
         AbastecimentoItemEntity itemArlaBalde = new AbastecimentoItemEntity();
         itemArlaBalde.setTipoCombustivel("arla 32 - balde");
@@ -296,7 +296,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Deve retornar os motoristas corretamente")
-    void deveRetornarOsMotoristasCorretamente() {
+    void quandoFiltradoPorMotorista_deveRetornarApenasAbastecimentosDoMotorista() {
 
         AbastecimentoItemEntity itemDiesel = new AbastecimentoItemEntity();
         itemDiesel.setTipoCombustivel("Diesel");
@@ -341,7 +341,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Deve retornar os postos com maiores consumos corretamente")
-    void deveRetornarOsPostosComMaioresConsumosCorretamente() {
+    void quandoExistemMultiplosPostos_deveRetornarRankingOrdenadoPorConsumo() {
 
         AbastecimentoItemEntity itemDiesel = new AbastecimentoItemEntity();
         itemDiesel.setTipoCombustivel("Diesel");
@@ -388,7 +388,7 @@ class DashboardServiceTest {
     }
     @Test
     @DisplayName("Deve retornar os gastos diario corretamente")
-    void deveRetornarOsGastosDiariosCorretamente() {
+    void quandoExistemAbastecimentosNoMesmoDia_deveAgruparGastoDiarioCorretamente() {
 
         AbastecimentoItemEntity item = new AbastecimentoItemEntity();
         item.setTipoCombustivel("Diesel");
@@ -429,8 +429,8 @@ class DashboardServiceTest {
 
         assertThat(response.totalAbastecimentos()).isEqualTo(2);
         assertThat(response.gastoDiario()).hasSize(1);
-        assertThat(response.gastoDiario().get(0).dia()).isEqualTo("2024-01-10");
-        assertThat(response.gastoDiario().get(0).valor()).isEqualByComparingTo(new BigDecimal("5889.00"));
-        assertThat(response.gastoDiario().get(0).litros()).isEqualByComparingTo(new BigDecimal("900.00"));
+        assertThat(response.gastoDiario().getFirst().dia()).isEqualTo("2024-01-10");
+        assertThat(response.gastoDiario().getFirst().valor()).isEqualByComparingTo(new BigDecimal("5889.00"));
+        assertThat(response.gastoDiario().getFirst().litros()).isEqualByComparingTo(new BigDecimal("900.00"));
     }
 }
