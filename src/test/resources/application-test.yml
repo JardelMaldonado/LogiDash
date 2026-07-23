@@ -1,0 +1,10 @@
+jwt:
+  secret: chave-secreta-apenas-para-testes-0123456789-abcdef
+  expiration: 3600000
+
+frontend:
+  url: http://localhost:3000
+
+profrotas:
+  api:
+    token: token-fake-para-testes
