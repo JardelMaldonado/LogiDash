@@ -15,7 +15,8 @@ import java.math.BigDecimal;
 @Table(name = "abastecimento_itens")
 public class AbastecimentoItemEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "abastecimentos_seq")
+    @SequenceGenerator(name = "abastecimentos_seq", sequenceName = "abastecimentos_seq", allocationSize = 1)
     private Integer id;
 
     @ManyToOne

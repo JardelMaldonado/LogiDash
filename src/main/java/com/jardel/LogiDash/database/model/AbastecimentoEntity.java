@@ -18,10 +18,11 @@ import java.util.List;
 @Table(name = "abastecimentos")
 public class AbastecimentoEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "abastecimento_itens_seq")
+    @SequenceGenerator(name = "abastecimento_itens_seq", sequenceName = "abastecimento_itens_seq", allocationSize = 1)
     private Integer id;
 
-    @Column(nullable = false)
+    @Column(nullable = false,  unique = true)
     private Long identificador;
 
     @Column(nullable = false)
