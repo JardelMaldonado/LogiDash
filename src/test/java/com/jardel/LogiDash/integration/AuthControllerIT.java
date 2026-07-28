@@ -134,7 +134,7 @@ public class AuthControllerIT {
                 .expectCookie().exists("auth_token")
                 .expectCookie().httpOnly("auth_token", true)
                 .expectCookie().secure("auth_token", true)
-                .expectCookie().sameSite("auth_token", "Strict")
+                .expectCookie().sameSite("auth_token", "None")
                 .expectCookie().path("auth_token", "/")
                 .expectBody(LoginResponsePublico.class)
                 .value(response -> {
