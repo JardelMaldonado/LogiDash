@@ -2,6 +2,7 @@ package com.jardel.LogiDash.scheduler;
 
 import com.jardel.LogiDash.service.AbastecimentoService;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,7 +17,7 @@ public class ImportacaoScheduler implements ApplicationRunner {
     private final AbastecimentoService abastecimentoService;
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(@NonNull ApplicationArguments args) {
         String dataFim = LocalDate.now().toString();
         String dataInicio = LocalDate.now().minusDays(3).toString();
         abastecimentoService.importarAbastecimentos(dataInicio, dataFim);

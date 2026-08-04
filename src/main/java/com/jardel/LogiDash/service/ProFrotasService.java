@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -81,8 +82,8 @@ public class ProFrotasService {
         }
 
         Set<Long> idsEstornados = todosRegistros.stream()
-                .filter(x -> x.getAbastecimentoEstornado() != null)
                 .map(AbastecimentoResponse::getAbastecimentoEstornado)
+                .filter(Objects::nonNull)
                 .map(Long::valueOf)
                 .collect(Collectors.toSet());
 

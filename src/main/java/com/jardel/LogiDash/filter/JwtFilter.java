@@ -26,7 +26,7 @@ public class JwtFilter extends OncePerRequestFilter {
     private final CookieUtil cookieUtil;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain chain)
             throws ServletException, IOException {
 
         final String token = cookieUtil.extrairTokenDosCookies(request);
