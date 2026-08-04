@@ -1,6 +1,6 @@
 # 🚛 LogiDash — Backend de Gestão de Frota
 
-Backend de um dashboard para **gestão e análise de abastecimentos de frota**, desenvolvido com **Java 21 + Spring Boot 3**. Integra com uma API externa de gestão de frotas (ProFrotas), importa dados automaticamente e expõe endpoints para um frontend de análise.
+Backend de um dashboard para **gestão e análise de abastecimentos de frota**, desenvolvido com **Java 21 + Spring Boot 4**. Integra com uma API externa de gestão de frotas (ProFrotas), importa dados automaticamente e expõe endpoints para um frontend de análise.
 
 ---
 
@@ -12,8 +12,6 @@ O problema que motivou o projeto é concreto: empresas que dependem de frota —
 
 O LogiDash resolve isso automatizando a importação, tratando inconsistências dos dados (estornos, recusas, registros duplicados) e entregando tudo pronto para visualização. Nasceu como aprendizado, mas foi construído com a preocupação de resolver um problema real — e com potencial de virar um produto.
 
-> **Limitação atual:** a integração está acoplada à API da ProFrotas — estrutura de requisição, campos do JSON e regras de negócio são específicos desse contrato. Uma evolução natural seria extrair uma interface `FrotaApiClient` e criar implementações por provedor, tornando o sistema compatível com qualquer API de gestão de frota sem alterar o núcleo da aplicação.
-
 ---
 
 ## 🧰 Tecnologias
@@ -21,13 +19,17 @@ O LogiDash resolve isso automatizando a importação, tratando inconsistências 
 | Categoria | Tecnologia |
 |---|---|
 | Linguagem | Java 21 |
-| Framework | Spring Boot 3 |
+| Framework | Spring Boot 4 |
 | Segurança | Spring Security + JWT |
 | Persistência | Spring Data JPA + Hibernate |
 | Banco de Dados | PostgreSQL |
+| Migrações | Flyway |
 | HTTP Client | Spring WebFlux (WebClient) |
 | Rate Limiting | Bucket4j |
 | Build | Maven |
+| Testes | JUnit 5, Mockito, Testcontainers, WireMock, RestTestClient |
+| CI/CD | GitHub Actions |
+| Qualidade de Código | Qodana |
 
 ---
 
@@ -65,6 +67,32 @@ O LogiDash resolve isso automatizando a importação, tratando inconsistências 
 - CRUD completo de usuários (exclusivo para ADMIN)
 - Ativação/desativação de conta sem deletar o registro
 - Usuário desativado tem login bloqueado imediatamente via `isAccountNonLocked()`
+
+---
+
+## 🧪 Testes e CI/CD
+
+O projeto tem uma suíte de testes em duas camadas, além de um pipeline de CI/CD automatizado.
+
+### Testes unitários (JUnit 5 + Mockito)
+Cobrem a camada de serviço isoladamente (`DashboardService`, `UsuarioService`, `AbastecimentoService`), validando regras de negócio com mocks das dependências.
+
+### Testes de integração (Testcontainers + WireMock + RestTestClient)
+Sobem um Postgres real via Testcontainers e o contexto Spring completo, cobrindo:
+
+- **Repository**: query com `JOIN FETCH` validada contra N+1 (a sessão do Hibernate é fechada antes da asserção, provando que a coleção não depende de lazy loading), filtro por intervalo de datas, e `existsByIdentificador`
+- **Integração com API externa**: paginação e retentativa automática em respostas 429, simuladas via WireMock
+- **Endpoints HTTP**: login (credenciais válidas e inválidas), atributos de segurança do cookie (`HttpOnly`, `Secure`, `SameSite`, `maxAge`) e logout, testados via `RestTestClient` contra o servidor real (`RANDOM_PORT`)
+
+### Pipeline de CI/CD (GitHub Actions)
+Três jobs encadeados a cada push/PR na branch principal:
+
+1. **`unit-tests`** → roda os testes unitários (`mvnw test`)
+2. **`integration-tests`** → roda os testes de integração via `maven-failsafe-plugin` (`mvnw verify -Dsurefire.skip=true`), com Docker disponível nativamente no runner para o Testcontainers
+3. **`build`** → gera o `.jar` final (sem reexecutar os testes) e o publica como artefato do workflow
+
+### Qualidade de código (Qodana)
+Análise estática contínua via [Qodana](https://www.jetbrains.com/qodana/) (JetBrains), rodando a cada push/PR para detectar code smells, dependências vulneráveis e outros problemas antes do merge.
 
 ---
 
@@ -114,8 +142,9 @@ Ataques de força bruta visam o endpoint de autenticação. Os demais endpoints 
 
 ### Pré-requisitos
 - Java 21+
-- Maven 3.9+
+- Maven 3.9+ (ou use o Maven Wrapper incluído: `./mvnw`)
 - PostgreSQL rodando
+- Docker rodando (necessário para os testes de integração via Testcontainers)
 
 ### Configuração (`application.properties`)
 
@@ -141,7 +170,13 @@ git clone https://github.com/seu-usuario/logidash-backend.git
 cd logidash-backend
 
 # Build e execução
-mvn spring-boot:run
+./mvnw spring-boot:run
+
+# Rodar testes unitários
+./mvnw test
+
+# Rodar testes de integração
+./mvnw verify -Dsurefire.skip=true
 ```
 
 A aplicação sobe na porta `8080` e já executa uma importação inicial dos últimos 3 dias automaticamente.
@@ -183,5 +218,7 @@ A aplicação sobe na porta `8080` e já executa uma importação inicial dos ú
 - **`@Transactional(readOnly = true)`** nas operações de leitura para otimização do JPA
 - **Tratamento global de exceções** com `@RestControllerAdvice`: respostas padronizadas sem vazar stack traces para o cliente
 - **DTOs imutáveis** com `record` do Java para transporte de dados
+- **Suíte de testes unitários e de integração** cobrindo services, repositories e controllers
+- **Pipeline de CI/CD automatizado** com GitHub Actions e análise estática contínua via Qodana
 
 ---
