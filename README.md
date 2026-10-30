@@ -24,6 +24,7 @@ O LogiDash resolve isso automatizando a importação, tratando inconsistências 
 | Rate Limiting | Bucket4j |
 | Build | Maven |
 | Testes | JUnit 5, Mockito, Testcontainers, WireMock, RestTestClient |
+| Containerização | Docker + Docker Compose |
 | CI/CD | GitHub Actions |
 | Qualidade de Código | Qodana |
 
@@ -132,28 +133,36 @@ Ataques de força bruta geralmente miram a autenticação. Os demais endpoints j
 - PostgreSQL rodando
 - Docker rodando para os testes de integração
 
-### Configuração (`application.properties`)
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/logidash
-spring.datasource.username=seu_usuario
-spring.datasource.password=sua_senha
+### Variáveis de ambiente
 
-jwt.secret=sua_chave_secreta_longa_e_segura
-jwt.expiration=86400000
+| Variável | Descrição |
+|---|---|
+| `DB_URL` | URL JDBC do PostgreSQL |
+| `DB_USERNAME` / `DB_PASSWORD` | Credenciais do banco |
+| `PROFROTAS_URL` / `PROFROTAS_TOKEN` | URL e token da API ProFrotas |
+| `JWT_SECRET` / `JWT_EXPIRATION` | Segredo e validade (ms) do JWT |
+| `FRONTEND_URL` | Origem do frontend liberada no CORS |
 
-profrotas.api.url=https://api.profrotas.com.br
-profrotas.api.token=seu_token_profrotas
+### 🐳 Executando com Docker
 
-frontend.url=http://localhost:3000
-```
+Sobe banco, backend e frontend com um único comando.
 
-### Executando
+**Pré-requisito:** este repositório e o do frontend (`logidashweb`) clonados **lado a lado**, pois o compose usa `../logidashweb`.
+
 ```bash
-git clone https://github.com/seu-usuario/logidash-backend.git
-cd logidash-backend
-
-./mvnw spring-boot:run
+cp .env.example .env     # preencha os valores (no PowerShell: Copy-Item)
+docker compose up --build
 ```
+
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8080
+
+> ⚠️ Nunca faça commit do `.env`: ele tem o token da ProFrotas e o segredo do JWT. Só o `.env.example` é versionado.
+
+**Detalhes:**
+- Build multi-stage do backend (JDK compila, JRE roda) com usuário sem privilégios.
+- Postgres 18 com dados no volume `pgdata`. `docker compose down` mantém os dados, `down -v` apaga.
+- O frontend usa rewrite do Next: o `NEXT_PUBLIC_API_URL` vale `http://backend:8080` e é lido no build.
 
 ### Testes
 ```bash
